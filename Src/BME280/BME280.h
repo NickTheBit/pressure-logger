@@ -25,12 +25,14 @@ class BME280 {
  private:
    I2CInterface &i2cBus;
    uint8_t address;
+   uint16_t pollingRate;
    struct filteredMeasurements currentMeasurements = {};
 
+   [[noreturn]] static void pollingTask(void * arguments);
    void readRegister(uint8_t registerAddress, uint8_t *returnedData, uint32_t length);
    void writeRegister(uint8_t registerAddress, uint8_t *dataToWrite, uint32_t length);
  public:
-   BME280(I2CInterface& i2cBus, uint8_t address);
+   BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate);
    ~BME280() = default;
 
    BME280_DEFS::sensorPowerMode_t getSensorMode();

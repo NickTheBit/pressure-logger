@@ -5,17 +5,26 @@
 **********************************************/
 
 #include "BME280.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 /**
-* @brief Initializes the BME280_DEFS class with i2c style communication with the chip.
-* @param i2cBus
-* @param address
-*/
-BME280::BME280(I2CInterface &i2cBus, uint8_t address) : i2cBus(i2cBus), address(address) {
+ * @brief Initializes the BME280_DEFS class with i2c style communication with
+ * the chip.
+ * @param i2cBus
+ * @param address
+ */
+BME280::BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate)
+	: i2cBus(i2cBus), address(address), pollingRate(pollingRate) {
+
+	if (this->pollingRate != 0) {
+		xTaskCreate( BME280::pollingTask, "BME_Reader", 128, this, 1, nullptr);
+	}
 }
 
 void BME280::readRegister(uint8_t registerAddress, uint8_t *returnedData, uint32_t length) {
-   this->i2cBus.read(registerAddress, length, returnedData);
+	this->i2cBus.write(this->address, &registerAddress, 1);
+	this->i2cBus.read(this->address, length, returnedData);
 }
 
 void BME280::writeRegister(uint8_t registerAddress, uint8_t *dataToWrite, uint32_t length) {
