@@ -19,10 +19,14 @@ void primaryTask(void *arguments) {
 
 	auto bme = BME280(i2cBus1, 0x76, 10);
 
+
+
     while (true) {
 
-		double humid = bme.getHumidity();
-		printf("Humidity: %d", humid);
+		// double humid = bme.getHumidity();
+		// double temperature = bme.getTemperature();
+		// double pressure = bme.getPressure();
+		// printf("Humidity: %2.2f\tTemperature: %2.2f\tPressure: %2.2f\n\r", humid, temperature, pressure);
 
         // Starting a heartbeat to indicate proper initialization.
         heartbeatPin.write(HAL::GPIO_STATE::LOW);

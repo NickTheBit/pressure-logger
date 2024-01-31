@@ -39,6 +39,7 @@ class BME280 {
    void setSensorMode(BME280_DEFS::sensorPowerMode_t newState);
    void softReset();
    void getSensorData();
+   uint8_t getChipID();
 
    double getTemperature();
    double getHumidity();

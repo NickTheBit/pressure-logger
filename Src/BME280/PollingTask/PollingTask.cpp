@@ -14,7 +14,6 @@
 
 	while (true) {
 		instance->getSensorData();
-
 		vTaskDelay(taskDelay);
 	}
 }
