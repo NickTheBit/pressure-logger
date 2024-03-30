@@ -30,9 +30,9 @@ class BME280 {
 
 	[[noreturn]] static void pollingTask(void *arguments);
 	void readRegister(uint8_t registerAddress, uint8_t *returnedData,
-					  uint32_t length);
+					  uint32_t length) const;
 	void writeRegister(uint8_t registerAddress, uint8_t *dataToWrite,
-					   uint32_t length);
+					   uint32_t length) const;
 
   public:
 	BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate);

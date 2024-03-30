@@ -27,13 +27,13 @@ BME280::BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate)
 }
 
 void BME280::readRegister(uint8_t registerAddress, uint8_t *returnedData,
-						  uint32_t length) {
+						  uint32_t length) const {
 	this->i2cBus.write(this->address, &registerAddress, 1);
 	this->i2cBus.read(this->address, length, returnedData);
 }
 
 void BME280::writeRegister(uint8_t registerAddress, uint8_t *dataToWrite,
-						   uint32_t length) {
+						   uint32_t length) const {
 	this->i2cBus.write(registerAddress, dataToWrite, length);
 }
 
