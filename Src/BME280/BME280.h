@@ -36,7 +36,7 @@ class BME280 {
 
   public:
 	BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate);
-	~BME280() = default;
+	~BME280();
 
 	BME280_DEFS::sensorPowerMode_t getSensorMode();
 	void setSensorMode(BME280_DEFS::sensorPowerMode_t newState);

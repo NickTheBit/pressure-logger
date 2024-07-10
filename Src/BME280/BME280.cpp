@@ -110,3 +110,10 @@ BME280_DEFS::sensorPowerMode_t BME280::getSensorMode() {
 			return BME280_DEFS::sensorPowerMode_t::ASLEEP;
 	}
 }
+
+/**
+ * @note Non functional for now, only serves to detect pointer misuse.
+ */
+BME280::~BME280() {
+	// todo: Implement log message to detect object deinit.
+}

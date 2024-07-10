@@ -11,7 +11,7 @@
 #include "Architectures/RP2040/RP2040_I2C/RP2040_I2C.h"
 #include "BME280/BME280.h"
 
-void primaryTask(void *arguments) {
+[[noreturn]] void primaryTask(void *arguments) {
 	// Configure the Pico's on-board LED as a heartbeat indicator.
 
 	auto heartbeatPin = RP2040_GPIOPin(PICO_DEFAULT_LED_PIN);
