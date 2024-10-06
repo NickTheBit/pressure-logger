@@ -13,7 +13,7 @@
 	const TickType_t taskDelay = 1000 / instance->pollingRate;
 
 	while (true) {
-//		instance->getSensorData();
+		instance->getSensorData();
 		vTaskDelay(taskDelay);
 	}
 }

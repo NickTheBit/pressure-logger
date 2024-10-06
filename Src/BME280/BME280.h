@@ -23,7 +23,6 @@ class BME280 {
 
 	[[noreturn]] static void pollingTask(void *arguments);
 
-
 	int8_t bme280_init(struct bme280_dev *dev);
 	static int8_t bme280_set_regs(uint8_t *reg_addr, const uint8_t *reg_data, uint32_t len, struct bme280_dev *dev);
 	static int8_t bme280_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, struct bme280_dev *dev);
@@ -33,9 +32,9 @@ class BME280 {
 	int8_t bme280_set_sensor_mode(uint8_t sensor_mode, struct bme280_dev *dev);
 	int8_t bme280_get_sensor_mode(uint8_t *sensor_mode, struct bme280_dev *dev);
 	static int8_t bme280_soft_reset(struct bme280_dev *dev);
-	int8_t bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data, struct bme280_dev *dev);
+	int8_t bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data, struct bme280_dev *dev) const;
 	int8_t bme280_compensate_data(uint8_t sensor_comp, const struct bme280_uncomp_data *uncomp_data,
-								  struct bme280_data *comp_data, struct bme280_calib_data *calib_data);
+								  struct bme280_data *comp_data, struct bme280_calib_data *calib_data) const;
 	int8_t bme280_cal_meas_delay(uint32_t *max_delay, const struct bme280_settings *settings);
 
 	/**\name Internal macros */
@@ -93,10 +92,10 @@ class BME280 {
 	BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate);
 	~BME280();
 
-	void getSensorData();
+	void getSensorData() {};
 	uint8_t getChipID();
 
-	double getTemperature() const;
+	double getTemperature();
 	double getHumidity() const;
 	double getPressure() const;
 };

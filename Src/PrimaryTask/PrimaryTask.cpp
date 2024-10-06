@@ -26,6 +26,7 @@
 
 	while (true) {
 
+		printf("Temperature: %2.2f", bme.getTemperature());
 //		auto strOut = "ChipID: %02X\n\r" + std::to_string(bme.getChipID());
 //		logger.logWrite(Logging::INFO, strOut);
 
@@ -37,7 +38,7 @@
 
 		// Starting a heartbeat to indicate proper initialization.
 		heartbeatPin.write(HAL::GPIO_STATE::LOW);
-		vTaskDelay(1000);
+		vTaskDelay(970);
 		heartbeatPin.write(HAL::GPIO_STATE::HIGH);
 		vTaskDelay(30);
 	}

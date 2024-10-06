@@ -7,6 +7,7 @@
 #include "BME280.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include <pico/time.h>
 
 /**
  * @brief Initializes the BME280_DEFS class with i2c style communication with
@@ -28,11 +29,28 @@ BME280::BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate)
 	// Sensor Initialization
 	bme280_init(&this->sensor);
 
+	// Updating sampling rate and sensor settings
 	bme280_get_sensor_settings(&this->settings, &this->sensor);
 
-	if (this->pollingRate != 0) {
-		xTaskCreate(BME280::pollingTask, "BME_Reader", 128, this, 1, nullptr);
-	}
+	/* Configuring the over-sampling rate, filter coefficient and standby time */
+
+	this->settings.filter = BME280_FILTER_COEFF_2;
+	/* Over-sampling rate for humidity, temperature and pressure */
+	this->settings.osr_h = BME280_OVERSAMPLING_1X;
+	this->settings.osr_p = BME280_OVERSAMPLING_1X;
+	this->settings.osr_t = BME280_OVERSAMPLING_1X;
+
+	/* Setting the standby time */
+	this->settings.standby_time = BME280_STANDBY_TIME_0_5_MS;
+
+	bme280_set_sensor_settings(BME280_SEL_ALL_SETTINGS, &this->settings, &this->sensor);
+
+	/* switching sensor to normal */
+	bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &this->sensor);
+
+//	if (this->pollingRate != 0) {
+//		xTaskCreate(BME280::pollingTask, "BME_Reader", 128, this, 1, nullptr);
+//	}
 }
 
 /**
@@ -41,7 +59,8 @@ BME280::BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate)
  * @param intf_ptr
  */
 void BME280::sensorDelay(uint32_t period_usec, void *intf_ptr) {
-	return;
+	auto wakeupTime = delayed_by_us(get_absolute_time(),period_usec);
+	while (absolute_time_diff_us(get_absolute_time(), wakeupTime) <= 0) {}
 }
 
 /**
@@ -56,7 +75,6 @@ int8_t BME280::writeRegister(uint8_t reg_addr, const uint8_t *reg_data, uint32_t
 	auto locThis = static_cast<BME280 *>(classPtr);
 	locThis->i2cBus.write(locThis->address, &reg_addr, 1);
 	locThis->i2cBus.write(locThis->address, const_cast<uint8_t *>(reg_data), len);
-	// fixme: This is not giving back any error info
 	return 0;
 }
 
@@ -72,10 +90,7 @@ int8_t BME280::readRegister(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, v
 	auto locThis = static_cast<BME280 *>(classPtr);
 	locThis->i2cBus.write(locThis->address, &reg_addr, 1);
 	locThis->i2cBus.read(locThis->address, len, reg_data);
-	if (reg_data != nullptr) {
-		return 0;
-	}
-	return -1;
+	return 0;
 }
 
 
@@ -115,7 +130,6 @@ int8_t BME280::bme280_init(struct bme280_dev *dev) {
 			rslt = BME280_E_DEV_NOT_FOUND;
 		}
 	}
-
 	return rslt;
 }
 
@@ -343,7 +357,7 @@ int8_t BME280::bme280_soft_reset(struct bme280_dev *dev) {
  * sensor, compensates the data and store it in the bme280_data structure
  * instance passed by the user.
  */
-int8_t BME280::bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data, struct bme280_dev *dev) {
+int8_t BME280::bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data, struct bme280_dev *dev) const {
 	int8_t rslt;
 
 	/* Array to store the pressure, temperature and humidity data read from
@@ -378,7 +392,7 @@ int8_t BME280::bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *c
  * by the user.
  */
 int8_t BME280::bme280_compensate_data(uint8_t sensor_comp, const struct bme280_uncomp_data *uncomp_data,
-									  struct bme280_data *comp_data, struct bme280_calib_data *calib_data) {
+									  struct bme280_data *comp_data, struct bme280_calib_data *calib_data) const {
 	int8_t rslt = BME280_OK;
 
 	if ((uncomp_data != NULL) && (comp_data != NULL) && (calib_data != NULL)) {
@@ -1096,3 +1110,8 @@ int8_t BME280::null_ptr_check(const struct bme280_dev *dev) {
 	return rslt;
 }
 
+double BME280::getTemperature() {
+	bme280_data comp_data {};
+	bme280_get_sensor_data(BME280_TEMP, &comp_data, &this->sensor);
+	return comp_data.temperature;
+}
