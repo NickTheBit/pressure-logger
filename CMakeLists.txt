@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-set(PICO_SDK_PATH /home/nick/.sdks/pico-sdk/pico-sdk/)
+set(PICO_SDK_PATH /home/nick/.sdks/pico-sdk/)
 
 # Pull in SDK (must be before project)
 include(cmakeScripts/pico_sdk_import.cmake)
