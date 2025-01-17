@@ -57,8 +57,14 @@ target_compile_options(${PROJECT_NAME} PUBLIC
 		-Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
 		-Wno-unused-function # we have some for the docs that aren't called
 		-Wno-maybe-uninitialized
+		-ffunction-sections
+		-fdata-sections
 		-specs=nano.specs
 		-g3
+)
+
+target_link_options(${PROJECT_NAME} PUBLIC
+		-Wl,--gc-sections
 )
 
 # Configuring Hal Library
