@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-set(PICO_SDK_PATH /home/nick/.sdks/pico-sdk/pico-sdk/)
+set(PICO_SDK_PATH /home/nick/.sdks/pico-sdk/)
 
 # Pull in SDK (must be before project)
 include(cmakeScripts/pico_sdk_import.cmake)
@@ -48,6 +48,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 		${PROJECT_SOURCE_DIR}/Libs/HAL/)
 
 file(GLOB_RECURSE PROJECT_SOURCES Src/*.cpp)
+list(APPEND PROJECT_SOURCES Src/freertos.c)
 
 target_sources(${PROJECT_NAME} PUBLIC ${PROJECT_SOURCES})
 
@@ -56,7 +57,14 @@ target_compile_options(${PROJECT_NAME} PUBLIC
 		-Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
 		-Wno-unused-function # we have some for the docs that aren't called
 		-Wno-maybe-uninitialized
-		-g
+		-ffunction-sections
+		-fdata-sections
+		-specs=nano.specs
+		-g3
+)
+
+target_link_options(${PROJECT_NAME} PUBLIC
+		-Wl,--gc-sections
 )
 
 # Configuring Hal Library
