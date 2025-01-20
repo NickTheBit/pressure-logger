@@ -14,11 +14,12 @@ class BME280 {
 	I2CInterface &i2cBus;
 	uint8_t address;
 	uint16_t pollingRate;
+	uint32_t measurementPeriod = 0;
 	struct bme280_dev sensor;
 	struct bme280_settings settings;
 
-	static int8_t readRegister(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *classPtr);
-	static int8_t writeRegister(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *classPtr);
+	static int8_t readRegister(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr);
+	static int8_t writeRegister(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr);
 	static void sensorDelay(uint32_t period_usec, void *intf_ptr);
 
 	[[noreturn]] static void pollingTask(void *arguments);
@@ -96,6 +97,6 @@ class BME280 {
 	uint8_t getChipID();
 
 	double getTemperature();
-	double getHumidity() const;
-	double getPressure() const;
+	double getHumidity() const {return 0;};
+	double getPressure() const {return 0;};
 };

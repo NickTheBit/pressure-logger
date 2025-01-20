@@ -7,6 +7,10 @@
 #include "BME280.h"
 #include "FreeRTOS.h"
 #include "task.h"
+
+#include <bits/streambuf_iterator.h>
+#include <cstdio>
+#include <cstring>
 #include <pico/time.h>
 
 /**
@@ -18,13 +22,11 @@
 BME280::BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate)
 	: i2cBus(i2cBus), address(address), pollingRate(pollingRate) {
 
-	this->sensor = {
-		.intf = BME280_I2C_INTF,
-		.intf_ptr = this,
-		.read = BME280::readRegister,
-		.write = BME280::writeRegister,
-		.delay_us = BME280::sensorDelay
-	};
+	this->sensor = {.intf = BME280_I2C_INTF,
+					.intf_ptr = this,
+					.read = readRegister,
+					.write = writeRegister,
+					.delay_us = sensorDelay};
 
 	// Sensor Initialization
 	bme280_init(&this->sensor);
@@ -48,9 +50,10 @@ BME280::BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate)
 	/* switching sensor to normal */
 	bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &this->sensor);
 
-//	if (this->pollingRate != 0) {
-//		xTaskCreate(BME280::pollingTask, "BME_Reader", 128, this, 1, nullptr);
-//	}
+	uint8_t sensorMode = 0;
+	bme280_get_sensor_mode(&sensorMode, &this->sensor);
+
+	bme280_cal_meas_delay(&measurementPeriod, &this->settings);
 }
 
 /**
@@ -59,22 +62,28 @@ BME280::BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate)
  * @param intf_ptr
  */
 void BME280::sensorDelay(uint32_t period_usec, void *intf_ptr) {
-	auto wakeupTime = delayed_by_us(get_absolute_time(),period_usec);
-	while (absolute_time_diff_us(get_absolute_time(), wakeupTime) <= 0) {}
+	auto wakeupTime = delayed_by_us(get_absolute_time(), period_usec);
+	while (absolute_time_diff_us(get_absolute_time(), wakeupTime) <= 0) {
+	}
 }
 
 /**
  * @brief Interface function for the sensor drivers from bosch
  * @param reg_addr
  * @param reg_data
- * @param len
+ * @param length
  * @param classPtr
  * @return register contents.
  */
-int8_t BME280::writeRegister(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *classPtr) {
-	auto locThis = static_cast<BME280 *>(classPtr);
-	locThis->i2cBus.write(locThis->address, &reg_addr, 1);
-	locThis->i2cBus.write(locThis->address, const_cast<uint8_t *>(reg_data), len);
+int8_t BME280::writeRegister(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr) {
+	const auto locThis = static_cast<BME280 *>(intf_ptr);
+
+	/* todo: investigate probability of heapless function. */
+	uint8_t totalBuffer[length + 1];
+	totalBuffer[0] = reg_addr;
+	memcpy(&totalBuffer[1], reg_data, length);
+
+	locThis->i2cBus.write(locThis->address, totalBuffer, length + 1);
 	return 0;
 }
 
@@ -82,17 +91,16 @@ int8_t BME280::writeRegister(uint8_t reg_addr, const uint8_t *reg_data, uint32_t
  * @brief Interface function for the sensor drivers from bosch
  * @param reg_addr
  * @param reg_data
- * @param len
- * @param classPtr
+ * @param length
+ * @param intf_ptr
  * @return Success or failure return code.
  */
-int8_t BME280::readRegister(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *classPtr) {
-	auto locThis = static_cast<BME280 *>(classPtr);
+int8_t BME280::readRegister(uint8_t reg_addr, uint8_t *reg_data, const uint32_t length, void *intf_ptr) {
+	const auto locThis = static_cast<BME280 *>(intf_ptr);
 	locThis->i2cBus.write(locThis->address, &reg_addr, 1);
-	locThis->i2cBus.read(locThis->address, len, reg_data);
+	locThis->i2cBus.read(locThis->address, length, reg_data);
 	return 0;
 }
-
 
 /**
  * @note Non functional for now, only serves to detect pointer misuse.
@@ -357,7 +365,8 @@ int8_t BME280::bme280_soft_reset(struct bme280_dev *dev) {
  * sensor, compensates the data and store it in the bme280_data structure
  * instance passed by the user.
  */
-int8_t BME280::bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data, struct bme280_dev *dev) const {
+int8_t BME280::bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data,
+									  struct bme280_dev *dev) const {
 	int8_t rslt;
 
 	/* Array to store the pressure, temperature and humidity data read from
@@ -476,7 +485,7 @@ int8_t BME280::bme280_cal_meas_delay(uint32_t *max_delay, const struct bme280_se
  * temperature and humidity in the sensor.
  */
 int8_t BME280::set_osr_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-							   struct bme280_dev *dev) {
+								struct bme280_dev *dev) {
 	int8_t rslt = BME280_W_INVALID_OSR_MACRO;
 
 	if (desired_settings & BME280_SEL_OSR_HUM) {
@@ -524,7 +533,7 @@ int8_t BME280::set_osr_humidity_settings(const struct bme280_settings *settings,
  * in the sensor according to the settings selected by the user.
  */
 int8_t BME280::set_osr_press_temp_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-										  struct bme280_dev *dev) {
+										   struct bme280_dev *dev) {
 	int8_t rslt;
 	uint8_t reg_addr = BME280_REG_CTRL_MEAS;
 	uint8_t reg_data;
@@ -552,7 +561,7 @@ int8_t BME280::set_osr_press_temp_settings(uint8_t desired_settings, const struc
  * in the sensor according to the settings selected by the user.
  */
 int8_t BME280::set_filter_standby_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-										  struct bme280_dev *dev) {
+										   struct bme280_dev *dev) {
 	int8_t rslt;
 	uint8_t reg_addr = BME280_REG_CONFIG;
 	uint8_t reg_data;
@@ -717,7 +726,7 @@ int8_t BME280::reload_device_settings(const struct bme280_settings *settings, st
  * return the compensated temperature data in double data type.
  */
 double BME280::compensate_temperature(const struct bme280_uncomp_data *uncomp_data,
-									 struct bme280_calib_data *calib_data) {
+									  struct bme280_calib_data *calib_data) {
 	double var1;
 	double var2;
 	double temperature;
@@ -745,7 +754,7 @@ double BME280::compensate_temperature(const struct bme280_uncomp_data *uncomp_da
  * return the compensated pressure data in double data type.
  */
 double BME280::compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
-								  const struct bme280_calib_data *calib_data) {
+								   const struct bme280_calib_data *calib_data) {
 	double var1;
 	double var2;
 	double var3;
@@ -787,7 +796,7 @@ double BME280::compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
  * return the compensated humidity data in double data type.
  */
 double BME280::compensate_humidity(const struct bme280_uncomp_data *uncomp_data,
-								  const struct bme280_calib_data *calib_data) {
+								   const struct bme280_calib_data *calib_data) {
 	double humidity;
 	double humidity_min = 0.0;
 	double humidity_max = 100.0;
@@ -822,8 +831,7 @@ double BME280::compensate_humidity(const struct bme280_uncomp_data *uncomp_data,
  * @brief This internal API is used to compensate the raw temperature data and
  * return the compensated temperature data in integer data type.
  */
-int32_t compensate_temperature(const struct bme280_uncomp_data *uncomp_data,
-									  struct bme280_calib_data *calib_data) {
+int32_t compensate_temperature(const struct bme280_uncomp_data *uncomp_data, struct bme280_calib_data *calib_data) {
 	int32_t var1;
 	int32_t var2;
 	int32_t temperature;
@@ -852,8 +860,7 @@ int32_t compensate_temperature(const struct bme280_uncomp_data *uncomp_data,
  * return the compensated pressure data in integer data type with higher
  * accuracy.
  */
-uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
-									const struct bme280_calib_data *calib_data) {
+uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data, const struct bme280_calib_data *calib_data) {
 	int64_t var1;
 	int64_t var2;
 	int64_t var3;
@@ -896,8 +903,7 @@ uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
  * @brief This internal API is used to compensate the raw pressure data and
  * return the compensated pressure data in integer data type.
  */
-uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
-									const struct bme280_calib_data *calib_data) {
+uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data, const struct bme280_calib_data *calib_data) {
 	int32_t var1;
 	int32_t var2;
 	int32_t var3;
@@ -948,8 +954,7 @@ uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
  * @brief This internal API is used to compensate the raw humidity data and
  * return the compensated humidity data in integer data type.
  */
-uint32_t compensate_humidity(const struct bme280_uncomp_data *uncomp_data,
-									const struct bme280_calib_data *calib_data) {
+uint32_t compensate_humidity(const struct bme280_uncomp_data *uncomp_data, const struct bme280_calib_data *calib_data) {
 	int32_t var1;
 	int32_t var2;
 	int32_t var3;
@@ -1111,7 +1116,30 @@ int8_t BME280::null_ptr_check(const struct bme280_dev *dev) {
 }
 
 double BME280::getTemperature() {
-	bme280_data comp_data {};
-	bme280_get_sensor_data(BME280_TEMP, &comp_data, &this->sensor);
+	bme280_data comp_data{};
+	uint8_t status_reg;
+
+	constexpr uint8_t sampleCount{10};
+	uint8_t idx = 0;
+
+	uint8_t sensorMode = 0;
+	bme280_get_sensor_mode(&sensorMode, &this->sensor);
+
+	while (idx < sampleCount) {
+		auto rslt = bme280_get_regs(BME280_REG_STATUS, &status_reg, 1, &this->sensor);
+		printf("Read status register 0x%x\n", rslt);
+		if (status_reg & BME280_STATUS_MEAS_DONE) {
+			sensorDelay(this->measurementPeriod, &this->sensor);
+			rslt = bme280_get_sensor_data(BME280_TEMP, &comp_data, &this->sensor);
+
+			if (rslt == BME280_OK) {
+				break;
+			}
+		} else {
+			sensorDelay(this->measurementPeriod, &this->sensor);
+		}
+		idx++;
+	}
+
 	return comp_data.temperature;
 }
