@@ -1117,29 +1117,18 @@ int8_t BME280::null_ptr_check(const struct bme280_dev *dev) {
 
 double BME280::getTemperature() {
 	bme280_data comp_data{};
-	uint8_t status_reg;
-
-	constexpr uint8_t sampleCount{10};
-	uint8_t idx = 0;
-
-	uint8_t sensorMode = 0;
-	bme280_get_sensor_mode(&sensorMode, &this->sensor);
-
-	while (idx < sampleCount) {
-		auto rslt = bme280_get_regs(BME280_REG_STATUS, &status_reg, 1, &this->sensor);
-		printf("Read status register 0x%x\n", rslt);
-		if (status_reg & BME280_STATUS_MEAS_DONE) {
-			sensorDelay(this->measurementPeriod, &this->sensor);
-			rslt = bme280_get_sensor_data(BME280_TEMP, &comp_data, &this->sensor);
-
-			if (rslt == BME280_OK) {
-				break;
-			}
-		} else {
-			sensorDelay(this->measurementPeriod, &this->sensor);
-		}
-		idx++;
-	}
-
+	bme280_get_sensor_data(BME280_TEMP, &comp_data, &this->sensor);
 	return comp_data.temperature;
+}
+
+double BME280::getHumidity() {
+	bme280_data comp_data{};
+	bme280_get_sensor_data(BME280_HUM, &comp_data, &this->sensor);
+	return comp_data.humidity;
+}
+
+double BME280::getPressure() {
+	bme280_data comp_data{};
+	bme280_get_sensor_data(BME280_PRESS, &comp_data, &this->sensor);
+	return comp_data.pressure;
 }

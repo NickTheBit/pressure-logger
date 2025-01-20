@@ -97,6 +97,6 @@ class BME280 {
 	uint8_t getChipID();
 
 	double getTemperature();
-	double getHumidity() const {return 0;};
-	double getPressure() const {return 0;};
+	double getHumidity();
+	double getPressure();
 };
