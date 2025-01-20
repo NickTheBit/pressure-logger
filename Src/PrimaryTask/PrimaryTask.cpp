@@ -25,11 +25,6 @@
 	auto bme = BME280(i2cBus1, 0x76, 10);
 
 	while (true) {
-
-		printf("Temperature: %2.2f", bme.getTemperature());
-//		auto strOut = "ChipID: %02X\n\r" + std::to_string(bme.getChipID());
-//		logger.logWrite(Logging::INFO, strOut);
-
 		double humid = bme.getHumidity();
 		double temperature = bme.getTemperature();
 		double pressure = bme.getPressure();
