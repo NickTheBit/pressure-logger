@@ -8,6 +8,7 @@
 
 #include "main.h"
 #include "PrimaryTask/PrimaryTask.hh"
+#include "FreeRTOSConfig.h"
 
 /*
  * RUNTIME START
@@ -17,10 +18,10 @@ int main() {
 	stdio_init_all();
 
 	// Setting up primary Task.
-	static StackType_t primaryTask_puxBuffer[128];
+	static StackType_t primaryTask_puxBuffer[configMINIMAL_STACK_SIZE];
 	static StaticTask_t primaryTask_tcbBuffer;
 
-	xTaskCreateStatic(primaryTask, "primaryTask", 128, nullptr, 1, primaryTask_puxBuffer, &primaryTask_tcbBuffer);
+	xTaskCreateStatic(primaryTask, "primaryTask", configMINIMAL_STACK_SIZE, nullptr, 1, primaryTask_puxBuffer, &primaryTask_tcbBuffer);
 
 	// Reporting Firmware info on UART
 	printf("*************************************\n\t%s\n----------------------"
