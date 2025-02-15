@@ -4,3 +4,6 @@
 [submodule "Libs/HAL"]
 	path = Libs/HAL
 	url = git@github.com:NickTheBit/HAL.git
+[submodule "Middlewares/no-OS-FatFS-SD-SPI-RPi-Pico"]
+	path = Middlewares/no-OS-FatFS-SD-SPI-RPi-Pico
+	url = git@github.com:carlk3/no-OS-FatFS-SD-SPI-RPi-Pico.git
