@@ -71,12 +71,16 @@ target_link_options(${PROJECT_NAME} PUBLIC
 set(HAL_SELECTED_ARCHITECTURE "RP2040")
 add_subdirectory(Libs/HAL)
 
+# Configuring FatFS
+add_subdirectory(Middlewares/no-OS-FatFS-SD-SPI-RPi-Pico/FatFs_SPI build)
+
 # Link to built libraries
 target_link_libraries(${PROJECT_NAME} LINK_PUBLIC
 		pico_stdlib
 		hardware_i2c
 		FreeRTOS
-		HAL)
+		HAL
+		FatFs_SPI)
 
 # Enable/disable STDIO via USB and UART
 pico_enable_stdio_usb(${PROJECT_NAME} 1)
