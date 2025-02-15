@@ -35,14 +35,13 @@ void parse_temp_press_calib_data(const uint8_t *reg_data, struct bme280_dev *dev
 void parse_humidity_calib_data(const uint8_t *reg_data, struct bme280_dev *dev);
 uint8_t are_settings_changed(uint8_t sub_settings, uint8_t desired_settings);
 int8_t set_osr_humidity_settings(const struct bme280_settings *settings, struct bme280_dev *dev);
-int8_t set_osr_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-							   struct bme280_dev *dev);
+int8_t set_osr_settings(uint8_t desired_settings, const struct bme280_settings *settings, struct bme280_dev *dev);
 int8_t set_osr_press_temp_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-										  struct bme280_dev *dev);
+								   struct bme280_dev *dev);
 void fill_osr_press_settings(uint8_t *reg_data, const struct bme280_settings *settings);
 void fill_osr_temp_settings(uint8_t *reg_data, const struct bme280_settings *settings);
 int8_t set_filter_standby_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-										  struct bme280_dev *dev);
+								   struct bme280_dev *dev);
 void fill_filter_settings(uint8_t *reg_data, const struct bme280_settings *settings);
 void fill_standby_settings(uint8_t *reg_data, const struct bme280_settings *settings);
 void parse_device_settings(const uint8_t *reg_data, struct bme280_settings *settings);
@@ -51,22 +50,16 @@ int8_t reload_device_settings(const struct bme280_settings *settings, struct bme
 
 #ifdef BME280_DOUBLE_ENABLE
 
-double compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
-								  const struct bme280_calib_data *calib_data);
-double compensate_humidity(const struct bme280_uncomp_data *uncomp_data,
-								  const struct bme280_calib_data *calib_data);
-double compensate_temperature(const struct bme280_uncomp_data *uncomp_data,
-									 struct bme280_calib_data *calib_data);
+double compensate_pressure(const struct bme280_uncomp_data *uncomp_data, const struct bme280_calib_data *calib_data);
+double compensate_humidity(const struct bme280_uncomp_data *uncomp_data, const struct bme280_calib_data *calib_data);
+double compensate_temperature(const struct bme280_uncomp_data *uncomp_data, struct bme280_calib_data *calib_data);
 
 #else
 
-int32_t compensate_temperature(const struct bme280_uncomp_data *uncomp_data,
-									  struct bme280_calib_data *calib_data);
+int32_t compensate_temperature(const struct bme280_uncomp_data *uncomp_data, struct bme280_calib_data *calib_data);
 
-uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
-									const struct bme280_calib_data *calib_data);
+uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data, const struct bme280_calib_data *calib_data);
 
-uint32_t compensate_humidity(const struct bme280_uncomp_data *uncomp_data,
-									const struct bme280_calib_data *calib_data);
+uint32_t compensate_humidity(const struct bme280_uncomp_data *uncomp_data, const struct bme280_calib_data *calib_data);
 
 #endif
