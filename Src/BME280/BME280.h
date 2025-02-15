@@ -6,97 +6,127 @@
 
 #pragma once
 
-#include "BME280_defs.hh"
+#include "BME280_bosch_driver/BME280_defs.hh"
 #include "Interfaces/I2CInterface.hh"
+#include <Architectures/RP2040/RP2040_I2C/RP2040_I2C.h>
+#include <BME280/BME280_bosch_driver/bme280_bosch_driver.hh>
+#include <cstring>
 
-class BME280 {
+template <typename Arch> class BME280 {
   private:
-	I2CInterface &i2cBus;
+	I2CInterface<Arch> &i2cBus;
 	uint8_t address;
 	uint16_t pollingRate;
 	uint32_t measurementPeriod = 0;
 	struct bme280_dev sensor;
-	struct bme280_settings settings;
+	struct bme280_settings settings{};
 
-	static int8_t readRegister(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr);
-	static int8_t writeRegister(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr);
-	static void sensorDelay(uint32_t period_usec, void *intf_ptr);
+	/**
+	 * @brief Interface function with sensor drivers from bosch
+	 * @param period_usec
+	 * @param intf_ptr
+	 */
+	static void sensorDelay(uint32_t period_usec, void *intf_ptr) {
+		auto wakeupTime = delayed_by_us(get_absolute_time(), period_usec);
+		while (absolute_time_diff_us(get_absolute_time(), wakeupTime) <= 0) {
+		}
+	}
 
-	[[noreturn]] static void pollingTask(void *arguments);
+	/**
+	 * @brief Interface function for the sensor drivers from bosch
+	 * @param reg_addr
+	 * @param reg_data
+	 * @param length
+	 * @param classPtr
+	 * @return register contents.
+	 */
+	static int8_t writeRegister(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr) {
+		const auto locThis = static_cast<BME280 *>(intf_ptr);
 
-	int8_t bme280_init(struct bme280_dev *dev);
-	static int8_t bme280_set_regs(uint8_t *reg_addr, const uint8_t *reg_data, uint32_t len, struct bme280_dev *dev);
-	static int8_t bme280_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, struct bme280_dev *dev);
-	int8_t bme280_set_sensor_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-									  struct bme280_dev *dev);
-	int8_t bme280_get_sensor_settings(struct bme280_settings *settings, struct bme280_dev *dev);
-	int8_t bme280_set_sensor_mode(uint8_t sensor_mode, struct bme280_dev *dev);
-	int8_t bme280_get_sensor_mode(uint8_t *sensor_mode, struct bme280_dev *dev);
-	static int8_t bme280_soft_reset(struct bme280_dev *dev);
-	int8_t bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data, struct bme280_dev *dev) const;
-	int8_t bme280_compensate_data(uint8_t sensor_comp, const struct bme280_uncomp_data *uncomp_data,
-								  struct bme280_data *comp_data, struct bme280_calib_data *calib_data) const;
-	int8_t bme280_cal_meas_delay(uint32_t *max_delay, const struct bme280_settings *settings);
+		/* todo: investigate probability of heapless function. */
+		uint8_t totalBuffer[length + 1];
+		totalBuffer[0] = reg_addr;
+		memcpy(&totalBuffer[1], reg_data, length);
 
-	/**\name Internal macros */
-/* To identify osr settings selected by user */
-#define OVERSAMPLING_SETTINGS UINT8_C(0x07)
+		locThis->i2cBus.write(locThis->address, totalBuffer, length + 1);
+		return 0;
+	}
 
-/* To identify filter and standby settings selected by user */
-#define FILTER_STANDBY_SETTINGS UINT8_C(0x18)
+	/**
+	 * @brief Interface function for the sensor drivers from bosch
+	 * @param reg_addr
+	 * @param reg_data
+	 * @param length
+	 * @param intf_ptr
+	 * @return Success or failure return code.
+	 */
+	static int8_t readRegister(uint8_t reg_addr, uint8_t *reg_data, const uint32_t length, void *intf_ptr) {
+		const auto locThis = static_cast<BME280 *>(intf_ptr);
+		locThis->i2cBus.write(locThis->address, &reg_addr, 1);
+		locThis->i2cBus.read(locThis->address, length, reg_data);
+		return 0;
+	}
 
-	static int8_t put_device_to_sleep(struct bme280_dev *dev);
-	static int8_t write_power_mode(uint8_t sensor_mode, struct bme280_dev *dev);
-	static int8_t null_ptr_check(const struct bme280_dev *dev);
-	static void interleave_reg_addr(const uint8_t *reg_addr, uint8_t *temp_buff, const uint8_t *reg_data, uint32_t len);
-	static int8_t get_calib_data(struct bme280_dev *dev);
-	static void parse_temp_press_calib_data(const uint8_t *reg_data, struct bme280_dev *dev);
-	static void parse_humidity_calib_data(const uint8_t *reg_data, struct bme280_dev *dev);
-	static uint8_t are_settings_changed(uint8_t sub_settings, uint8_t desired_settings);
-	static int8_t set_osr_humidity_settings(const struct bme280_settings *settings, struct bme280_dev *dev);
-	static int8_t set_osr_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-								   struct bme280_dev *dev);
-	static int8_t set_osr_press_temp_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-											  struct bme280_dev *dev);
-	static void fill_osr_press_settings(uint8_t *reg_data, const struct bme280_settings *settings);
-	static void fill_osr_temp_settings(uint8_t *reg_data, const struct bme280_settings *settings);
-	static int8_t set_filter_standby_settings(uint8_t desired_settings, const struct bme280_settings *settings,
-											  struct bme280_dev *dev);
-	static void fill_filter_settings(uint8_t *reg_data, const struct bme280_settings *settings);
-	static void fill_standby_settings(uint8_t *reg_data, const struct bme280_settings *settings);
-	static void parse_device_settings(const uint8_t *reg_data, struct bme280_settings *settings);
-	static void parse_sensor_data(const uint8_t *reg_data, struct bme280_uncomp_data *uncomp_data);
-	static int8_t reload_device_settings(const struct bme280_settings *settings, struct bme280_dev *dev);
-
-#ifdef BME280_DOUBLE_ENABLE
-
-	static double compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
-									  const struct bme280_calib_data *calib_data);
-	static double compensate_humidity(const struct bme280_uncomp_data *uncomp_data,
-									  const struct bme280_calib_data *calib_data);
-	static double compensate_temperature(const struct bme280_uncomp_data *uncomp_data,
-										 struct bme280_calib_data *calib_data);
-
-#else
-
-	static int32_t compensate_temperature(const struct bme280_uncomp_data *uncomp_data,
-										  struct bme280_calib_data *calib_data);
-
-	static uint32_t compensate_pressure(const struct bme280_uncomp_data *uncomp_data,
-										const struct bme280_calib_data *calib_data);
-
-	static uint32_t compensate_humidity(const struct bme280_uncomp_data *uncomp_data,
-										const struct bme280_calib_data *calib_data);
-
-#endif
   public:
-	BME280(I2CInterface &i2cBus, uint8_t address, uint16_t pollingRate);
-	~BME280();
+	/**
+	 * @brief Initializes the BME280_DEFS class with i2c style communication with
+	 * the chip.
+	 * @param i2cBus
+	 * @param address
+	 */
+	BME280(I2CInterface<Arch> &i2cBus, uint8_t address, uint16_t pollingRate)
+		: i2cBus(i2cBus), address(address), pollingRate(pollingRate) {
 
-	void getSensorData() {};
-	uint8_t getChipID();
+		this->sensor = {.intf = BME280_I2C_INTF,
+						.intf_ptr = this,
+						.read = readRegister,
+						.write = writeRegister,
+						.delay_us = sensorDelay};
 
-	double getTemperature();
-	double getHumidity();
-	double getPressure();
+		// Sensor Initialization
+		bme280_init(&this->sensor);
+
+		// Updating sampling rate and sensor settings
+		bme280_get_sensor_settings(&this->settings, &this->sensor);
+
+		/* Configuring the over-sampling rate, filter coefficient and standby time */
+
+		this->settings.filter = BME280_FILTER_COEFF_2;
+		/* Over-sampling rate for humidity, temperature and pressure */
+		this->settings.osr_h = BME280_OVERSAMPLING_1X;
+		this->settings.osr_p = BME280_OVERSAMPLING_1X;
+		this->settings.osr_t = BME280_OVERSAMPLING_1X;
+
+		/* Setting the standby time */
+		this->settings.standby_time = BME280_STANDBY_TIME_0_5_MS;
+
+		bme280_set_sensor_settings(BME280_SEL_ALL_SETTINGS, &this->settings, &this->sensor);
+
+		/* switching sensor to normal */
+		bme280_set_sensor_mode(BME280_POWERMODE_NORMAL, &this->sensor);
+
+		uint8_t sensorMode = 0;
+		bme280_get_sensor_mode(&sensorMode, &this->sensor);
+
+		bme280_cal_meas_delay(&measurementPeriod, &this->settings);
+	}
+	~BME280() = default;
+
+	double getTemperature() {
+		bme280_data comp_data{};
+		bme280_get_sensor_data(BME280_TEMP, &comp_data, &this->sensor);
+		return comp_data.temperature;
+	}
+
+	double getHumidity() {
+		bme280_data comp_data{};
+		bme280_get_sensor_data(BME280_HUM, &comp_data, &this->sensor);
+		return comp_data.humidity;
+	}
+
+	double getPressure() {
+		bme280_data comp_data{};
+		bme280_get_sensor_data(BME280_PRESS, &comp_data, &this->sensor);
+		return comp_data.pressure;
+	}
 };
