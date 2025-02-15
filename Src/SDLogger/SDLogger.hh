@@ -8,35 +8,57 @@
 
 #include "ff.h"
 
+#include "SDLogger/hw_config.hh"
+#include <FreeRTOS.h>
 #include <Logger/Logger.hh>
 #include <f_util.h>
-#include "SDLogger/hw_config.hh"
 #include <sd_card.h>
+#include <task.h>
 
 class SDLogger : public Logger<SDLogger> {
   private:
-	sd_card_t *pSD = nullptr;
+	sd_card_t *pSD;
 	FIL fil;
+
   public:
 	SDLogger() {
+		sd_init_driver();
 		pSD = sd_get_by_num(0);
 		FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
-		if (fr != FR_OK) panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
-
-		const auto filename = "log.txt";
-		fr = f_open(&fil, filename, FA_OPEN_APPEND | FA_WRITE);
-		if (fr != FR_OK && fr != FR_EXIST) panic("f_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
-	}
-	~SDLogger() {
-		if (const auto fr = f_close(&fil); fr != FR_OK) {
-			printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+		uint8_t retry_count = 0;
+		if (fr != FR_OK && retry_count < 20) {
+			// todo: Not a great idea to use FreeRTOS specific functions in here.
+			vTaskDelay(10);
+			fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
+			retry_count++;
 		}
-		f_unmount(pSD->pcName);
+
+		if (retry_count >= 20) {
+			panic("Too many re-attempts, aborting");
+		}
 	}
+	~SDLogger() { f_unmount(pSD->pcName); }
 
 	void writeImpl(std::string &message) {
+		uint8_t retry_count = 0;
+		const auto filename = "log.txt";
+		FRESULT fr = f_open(&fil, filename, FA_OPEN_APPEND | FA_WRITE);
+		retry_count = 0;
+		while (fr != FR_OK && retry_count < 20) {
+			vTaskDelay(100);
+			fr = f_open(&fil, filename, FA_OPEN_APPEND | FA_WRITE);
+			retry_count++;
+		}
+
+		if (retry_count >= 20) {
+			panic("Too many re-attempts, aborting");
+		}
 		if (f_printf(&fil, "%s\n", message.c_str()) < 0) {
 			printf("Error");
+		}
+		// Closing the file, finalizing the writing.
+		if (const auto fr = f_close(&fil); fr != FR_OK) {
+			printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
 		}
 	}
 };
