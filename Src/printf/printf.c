@@ -43,7 +43,7 @@
 #include "printf_config.h"
 #endif
 
-#include <printf/printf.h>
+#include "printf.h"
 
 #ifdef __cplusplus
 #include <cstdint>
@@ -1440,7 +1440,7 @@ int vsprintf_(char* s, const char* format, va_list arg)
   return vsnprintf_(s, PRINTF_MAX_POSSIBLE_BUFFER_SIZE, format, arg);
 }
 
-int vfctprintf(void (*out)(char c, void* extra_arg), void* extra_arg, const char* format, va_list arg)
+int vfctprintf_mini(void (*out)(char c, void* extra_arg), void* extra_arg, const char* format, va_list arg)
 {
   if (out == NULL) { return 0; }
   output_gadget_t gadget = function_gadget(out, extra_arg);
@@ -1478,7 +1478,7 @@ int fctprintf(void (*out)(char c, void* extra_arg), void* extra_arg, const char*
 {
   va_list args;
   va_start(args, format);
-  const int ret = vfctprintf(out, extra_arg, format, args);
+  const int ret = vfctprintf_mini(out, extra_arg, format, args);
   va_end(args);
   return ret;
 }
